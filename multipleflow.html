@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pipe Flow & Reynolds Calculator</title>
+  <!-- Load Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Basic styling */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1, h2, h3 {
+      margin: 0.5em 0;
+    }
+    label {
+      display: block;
+      margin: 1em 0 0.5em;
+      font-weight: bold;
+    }
+    select, input {
+      margin: 0.5em auto;
+      width: 80%;
+      max-width: 400px;
+      padding: 0.5em;
+      font-size: 1em;
+      display: block;
+    }
+    button {
+      margin: 1.5em auto;
+      padding: 0.8em 1.2em;
+      font-size: 1em;
+      cursor: pointer;
+      display: block;
+    }
+    .output, #historyContainer {
+      margin-top: 2em;
+      padding: 1em;
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .output p {
+      margin: 0.5em 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5em;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    hr {
+      margin: 2em 0;
+    }
+    /* Tooltip styles */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+      color: #007BFF;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 4px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.9em;
+      line-height: 1.3em;
+    }
+    .tooltip .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Chart container (hidden until a calculation is made) */
+    #chartContainer {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: none;
+    }
+    /* Error message styling */
+    #errorMessage {
+      color: red;
+      margin-bottom: 1em;
+      font-weight: bold;
+    }
+    /* Action buttons styling */
+    #actionButtons {
+      margin-top: 2em;
+    }
+    /* Group sections */
+    .flow-inputs {
+      border: 1px solid #eee;
+      padding: 1em;
+      margin: 1em 0;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pipe Flow & Reynolds Calculator</h1>
+    
+    <!-- Unit System Selection -->
+    <label for="unitSystem">Unit System:
+      <span class="tooltip">?<span class="tooltiptext">Choose SI for metric units (m, kg/m³, Pa·s, m/s) or Imperial for US customary units (in, lb/ft³, lb/(ft·s), ft/s).</span></span>
+    </label>
+    <select id="unitSystem" onchange="updateUnitSystem();">
+      <option value="SI">SI (m, kg/m³, Pa·s, m/s)</option>
+      <option value="Imperial">Imperial (in, lb/ft³, lb/(ft·s), ft/s)</option>
+    </select>
+    
+    <!-- Flow Type Selection -->
+    <label for="flowType">Flow Type:
+      <span class="tooltip">?<span class="tooltiptext">Select the type of flow. Options: Straight Pipe Flow, Packed Bed Flow, or Stirred Vessel Flow.</span></span>
+    </label>
+    <select id="flowType" onchange="updateFlowType();">
+      <option value="pipe">Straight Pipe Flow</option>
+      <option value="packed">Packed Bed Flow</option>
+      <option value="stirred">Stirred Vessel Flow</option>
+    </select>
+    
+    <h2>Flow Calculations</h2>
+    
+    <!-- Error Message Display -->
+    <div id="errorMessage"></div>
+    
+    <!-- Flow-specific Input Sections -->
+    <div id="pipeInputs" class="flow-inputs">
+      <h3>Straight Pipe Flow Inputs</h3>
+      <label for="pipeSize">Nominal Pipe Size:
+        <span class="tooltip">?<span class="tooltiptext">Select the nominal pipe size (in inches).</span></span>
+      </label>
+      <select id="pipeSize" onchange="updateScheduleOptions()">
+        <option value="1/8">1/8"</option>
+        <option value="1/4">1/4"</option>
+        <option value="3/8">3/8"</option>
+        <option value="1/2">1/2"</option>
+        <option value="3/4">3/4"</option>
+        <option value="1">1"</option>
+        <option value="1 1/4">1 1/4"</option>
+        <option value="1 1/2">1 1/2"</option>
+        <option value="2">2"</option>
+        <option value="2 1/2">2 1/2"</option>
+        <option value="3">3"</option>
+        <option value="3 1/2">3 1/2"</option>
+        <option value="4">4"</option>
+        <option value="4 1/2">4 1/2"</option>
+        <option value="5">5"</option>
+        <option value="6">6"</option>
+        <option value="8">8"</option>
+        <option value="10">10"</option>
+        <option value="12">12"</option>
+        <option value="14">14"</option>
+        <option value="16">16"</option>
+        <option value="18">18"</option>
+        <option value="20">20"</option>
+        <option value="24">24"</option>
+        <option value="30">30"</option>
+        <option value="36">36"</option>
+        <option value="48">48"</option>
+      </select>
+      
+      <label for="schedule">Pipe Schedule:
+        <span class="tooltip">?<span class="tooltiptext">Select the schedule corresponding to the pipe size.</span></span>
+      </label>
+      <select id="schedule">
+        <!-- Options will be populated automatically -->
+      </select>
+      
+      <label for="velocity" id="velocityLabel">Fluid Velocity (<span id="velocityUnit">m/s</span>):
+        <span class="tooltip">?<span class="tooltiptext">Enter the fluid velocity.</span></span>
+      </label>
+      <input type="number" id="velocity" placeholder="e.g., 1.5" step="any" />
+    </div>
+    
+    <div id="packedInputs" class="flow-inputs" style="display:none;">
+      <h3>Packed Bed Flow Inputs</h3>
+      <label for="particleDiameter">Particle Diameter (<span id="particleDiameterUnit">m</span>):
+        <span class="tooltip">?<span class="tooltiptext">Enter the particle diameter (characteristic length).</span></span>
+      </label>
+      <input type="number" id="particleDiameter" placeholder="e.g., 0.005" step="any" />
+      
+      <label for="voidFraction">Void Fraction (ε):
+        <span class="tooltip">?<span class="tooltiptext">Enter the void fraction (e.g., 0.4 means 40% void).</span></span>
+      </label>
+      <input type="number" id="voidFraction" placeholder="e.g., 0.4" step="any" />
+      
+      <label for="velocity" id="velocityLabelPacked">Superficial Velocity (<span id="velocityUnitPacked">m/s</span>):
+        <span class="tooltip">?<span class="tooltiptext">Enter the superficial velocity (flow rate divided by total cross-sectional area).</span></span>
+      </label>
+      <input type="number" id="velocityPacked" placeholder="e.g., 1.5" step="any" />
+    </div>
+    
+    <div id="stirredInputs" class="flow-inputs" style="display:none;">
+      <h3>Stirred Vessel Flow Inputs</h3>
+      <label for="impellerDiameter">Impeller Diameter (<span id="impellerDiameterUnit">m</span>):
+        <span class="tooltip">?<span class="tooltiptext">Enter the impeller diameter.</span></span>
+      </label>
+      <input type="number" id="impellerDiameter" placeholder="e.g., 0.3" step="any" />
+      
+      <label for="impellerSpeed">Impeller Speed (<span id="impellerSpeedUnit">s⁻¹</span>):
+        <span class="tooltip">?<span class="tooltiptext">Enter the impeller rotational speed (in revolutions per second).</span></span>
+      </label>
+      <input type="number" id="impellerSpeed" placeholder="e.g., 2.5" step="any" />
+    </div>
+    
+    <!-- Common Fluid Properties -->
+    <label for="material">Material:
+      <span class="tooltip">?<span class="tooltiptext">Select the fluid material. Density and viscosity update automatically.</span></span>
+    </label>
+    <select id="material" onchange="updateMaterialProperties()">
+      <!-- Material options (same list as before) -->
+      <option value="Methane">Methane</option>
+      <option value="Ethane">Ethane</option>
+      <option value="Propane">Propane</option>
+      <option value="n-Butane">n-Butane</option>
+      <option value="n-Pentane">n-Pentane</option>
+      <option value="n-Hexane">n-Hexane</option>
+      <option value="n-Heptane">n-Heptane</option>
+      <option value="n-Octane">n-Octane</option>
+      <option value="n-Nonane">n-Nonane</option>
+      <option value="n-Decane">n-Decane</option>
+      <option value="Isobutane">Isobutane</option>
+      <option value="Isooctane">Isooctane</option>
+      <option value="Cyclopentane">Cyclopentane</option>
+      <option value="Cyclohexane">Cyclohexane</option>
+      <option value="Methylcyclopentane">Methylcyclopentane</option>
+      <option value="Methylcyclohexane">Methylcyclohexane</option>
+      <option value="Ethylene">Ethylene</option>
+      <option value="Propylene">Propylene</option>
+      <option value="1-Butene">1-Butene</option>
+      <option value="cis-2-Butene">cis-2-Butene</option>
+      <option value="trans-2-Butene">trans-2-Butene</option>
+      <option value="1-Hexene">1-Hexene</option>
+      <option value="Isobutylene">Isobutylene</option>
+      <option value="1,3-Butadiene">1,3-Butadiene</option>
+      <option value="Cyclohexene">Cyclohexene</option>
+      <option value="Acetylene">Acetylene</option>
+      <option value="Benzene">Benzene</option>
+      <option value="Toluene">Toluene</option>
+      <option value="Ethylbenzene">Ethylbenzene</option>
+      <option value="Cumene">Cumene</option>
+      <option value="o-Xylene">o-Xylene</option>
+      <option value="m-Xylene">m-Xylene</option>
+      <option value="p-Xylene">p-Xylene</option>
+      <option value="Styrene">Styrene</option>
+      <option value="Naphthalene">Naphthalene</option>
+      <option value="Biphenyl">Biphenyl</option>
+      <option value="Formaldehyde">Formaldehyde</option>
+      <option value="Acetaldehyde">Acetaldehyde</option>
+      <option value="Methyl-acetate">Methyl-acetate</option>
+      <option value="Ethyl-acetate">Ethyl-acetate</option>
+      <option value="Acetone">Acetone</option>
+      <option value="Methyl-ethyl-ketone">Methyl-ethyl-ketone</option>
+      <option value="Diethyl-ether">Diethyl-ether</option>
+      <option value="Methyl-t-butyl-ether">Methyl-t-butyl-ether</option>
+      <option value="Methanol">Methanol</option>
+      <option value="Ethanol">Ethanol</option>
+      <option value="1-Propanol">1-Propanol</option>
+      <option value="1-Butanol">1-Butanol</option>
+      <option value="1-Hexanol">1-Hexanol</option>
+      <option value="2-Propanol">2-Propanol</option>
+      <option value="Phenol">Phenol</option>
+      <option value="Ethylene-glycol">Ethylene-glycol</option>
+      <option value="Acetic-acid">Acetic-acid</option>
+      <option value="n-Butyric-acid">n-Butyric-acid</option>
+      <option value="Benzoic-acid">Benzoic-acid</option>
+      <option value="Acetonitrile">Acetonitrile</option>
+      <option value="Methylamine">Methylamine</option>
+      <option value="Ethylamine">Ethylamine</option>
+      <option value="Nitromethane">Nitromethane</option>
+      <option value="Carbon-tetrachloride">Carbon-tetrachloride</option>
+      <option value="Chloroform">Chloroform</option>
+      <option value="Dichloromethane">Dichloromethane</option>
+      <option value="Methyl-chloride">Methyl-chloride</option>
+      <option value="Ethyl-chloride">Ethyl-chloride</option>
+      <option value="Chlorobenzene">Chlorobenzene</option>
+      <option value="Tetrafluoroethane">Tetrafluoroethane</option>
+      <option value="Argon">Argon</option>
+      <option value="Krypton">Krypton</option>
+      <option value="Xenon">Xenon</option>
+      <option value="Helium-4">Helium-4</option>
+      <option value="Hydrogen">Hydrogen</option>
+      <option value="Oxygen">Oxygen</option>
+      <option value="Nitrogen">Nitrogen</option>
+      <option value="Air">Air</option>
+      <option value="Chlorine">Chlorine</option>
+      <option value="Carbon-monoxide">Carbon-monoxide</option>
+      <option value="Carbon-dioxide">Carbon-dioxide</option>
+      <option value="Carbon-disulfide">Carbon-disulfide</option>
+      <option value="Hydrogen-sulfide">Hydrogen-sulfide</option>
+      <option value="Sulfur-dioxide">Sulfur-dioxide</option>
+      <option value="Sulfur-trioxide">Sulfur-trioxide</option>
+      <option value="Nitric-oxide-(NO)">Nitric-oxide-(NO)</option>
+      <option value="Nitrous-oxide-(N2O)">Nitrous-oxide-(N2O)</option>
+      <option value="Hydrogen-chloride">Hydrogen-chloride</option>
+      <option value="Hydrogen-cyanide">Hydrogen-cyanide</option>
+      <option value="Water">Water</option>
+      <option value="Ammonia">Ammonia</option>
+      <option value="Nitric-acid">Nitric-acid</option>
+      <option value="Sulfuric-acid">Sulfuric-acid</option>
+    </select>
+    
+    <label for="density">Fluid Density (<span id="densityUnit">kg/m³</span>):
+      <span class="tooltip">?<span class="tooltiptext">Enter the fluid density.</span></span>
+    </label>
+    <input type="number" id="density" placeholder="e.g., 1000" step="any" />
+    
+    <label for="viscosity">Fluid Viscosity (<span id="viscosityUnit">Pa·s</span>):
+      <span class="tooltip">?<span class="tooltiptext">Enter the dynamic viscosity.</span></span>
+    </label>
+    <input type="number" id="viscosity" placeholder="e.g., 0.001" step="any" />
+    
+    <button onclick="calculate()">Calculate Flow</button>
+    
+    <div class="output" id="output">
+      <!-- Output fields. For straight pipe, OD and ID are shown -->
+      <p><strong>Reynolds Number:</strong> <span id="reynolds"></span></p>
+      <p><strong>Flow Regime:</strong> <span id="flowRegime"></span></p>
+    </div>
+    
+    <!-- Chart Container (hidden until a calculation is made) -->
+    <div id="chartContainer">
+      <h2>Graph of Reynolds Number vs Input Variable</h2>
+      <canvas id="reChart" width="600" height="300"></canvas>
+    </div>
+    
+    <hr />
+    
+    <!-- History Section -->
+    <div id="historyContainer">
+      <h3>Recent Calculations</h3>
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Flow Type</th>
+            <th>Material</th>
+            <th>Density</th>
+            <th>Viscosity</th>
+            <th>Input(s)</th>
+            <th>Reynolds</th>
+            <th>Regime</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- History rows will be inserted here -->
+        </tbody>
+      </table>
+      <button onclick="clearHistory()">Clear Saved Calculations</button>
+    </div>
+    
+    <!-- Action Button for Print -->
+    <div id="actionButtons">
+      <button onclick="window.print()">Print Page</button>
+    </div>
+  </div>
+  
+  <script>
+    // Conversion factors
+    const m_to_in = 39.3701;         // meters to inches
+    const in_to_m = 0.0254;          // inches to meters
+    const mps_to_ftps = 3.28084;     // m/s to ft/s
+    const ftps_to_mps = 0.3048;      // ft/s to m/s
+    const kg_m3_to_lb_ft3 = 0.06243; // kg/m³ to lb/ft³
+    const lb_ft3_to_kg_m3 = 16.0185; // lb/ft³ to kg/m³
+    const Pa_s_to_lb_ft_s = 0.67197; // Pa·s to lb/(ft·s)
+    const lb_ft_s_to_Pa_s = 1.48816; // lb/(ft·s) to Pa·s
+
+    // Global variables for flow calculations and history
+    let reChart = null;
+    let calcHistory = [];
+    
+    // Pipe data remains available for straight pipe flow calculations
+    const pipeData = {
+      "1/8": { "10": { outside: 0.405 * in_to_m, inside: 0.307 * in_to_m },
+               "40": { outside: 0.405 * in_to_m, inside: 0.269 * in_to_m },
+               "80": { outside: 0.405 * in_to_m, inside: 0.215 * in_to_m } },
+      "1/4": { "10": { outside: 0.54 * in_to_m, inside: 0.41 * in_to_m },
+               "40": { outside: 0.54 * in_to_m, inside: 0.364 * in_to_m },
+               "80": { outside: 0.54 * in_to_m, inside: 0.302 * in_to_m } },
+      // ... (other pipeData entries remain unchanged)
+      "48": { "XX": { outside: 48 * in_to_m, inside: 47.25 * in_to_m },
+              "XX2": { outside: 48 * in_to_m, inside: 47 * in_to_m } }
+    };
+
+    /**********************************************************************
+     * UPDATE SCHEDULE OPTIONS (for straight pipe flow)
+     **********************************************************************/
+    function updateScheduleOptions() {
+      let pipeSize = document.getElementById("pipeSize").value.trim();
+      const scheduleSelect = document.getElementById("schedule");
+      scheduleSelect.innerHTML = "";
+      if (pipeData.hasOwnProperty(pipeSize)) {
+        const validSchedules = Object.keys(pipeData[pipeSize]);
+        validSchedules.forEach(function(schedule) {
+          const option = document.createElement("option");
+          option.value = schedule;
+          option.textContent = schedule;
+          scheduleSelect.appendChild(option);
+        });
+      } else {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No schedule available";
+        scheduleSelect.appendChild(option);
+      }
+    }
+
+    /**********************************************************************
+     * UPDATE UNIT SYSTEM
+     * Updates labels and placeholders when the unit system is changed.
+     **********************************************************************/
+    function updateUnitSystem() {
+      const unitSystem = document.getElementById("unitSystem").value;
+      if (unitSystem === "SI") {
+        document.getElementById("densityUnit").textContent = "kg/m³";
+        document.getElementById("viscosityUnit").textContent = "Pa·s";
+        document.getElementById("velocityUnit").textContent = "m/s";
+        document.getElementById("velocityUnitPacked").textContent = "m/s";
+        document.getElementById("impellerDiameterUnit").textContent = "m";
+        document.getElementById("impellerSpeedUnit").textContent = "s⁻¹";
+        document.getElementById("density").placeholder = "e.g., 1000";
+        document.getElementById("viscosity").placeholder = "e.g., 0.001";
+        document.getElementById("velocity").placeholder = "e.g., 1.5";
+        document.getElementById("velocityPacked").placeholder = "e.g., 1.5";
+      } else {
+        document.getElementById("densityUnit").textContent = "lb/ft³";
+        document.getElementById("viscosityUnit").textContent = "lb/(ft·s)";
+        document.getElementById("velocityUnit").textContent = "ft/s";
+        document.getElementById("velocityUnitPacked").textContent = "ft/s";
+        document.getElementById("impellerDiameterUnit").textContent = "in";
+        document.getElementById("impellerSpeedUnit").textContent = "s⁻¹";
+        document.getElementById("density").placeholder = "e.g., 62.43";
+        document.getElementById("viscosity").placeholder = "e.g., 0.67";
+        document.getElementById("velocity").placeholder = "e.g., 4.92";
+        document.getElementById("velocityPacked").placeholder = "e.g., 4.92";
+      }
+    }
+
+    /**********************************************************************
+     * UPDATE MATERIAL PROPERTIES
+     * When a material is selected, update the density and viscosity fields.
+     **********************************************************************/
+    const materialProperties = {
+      "Methane":               { density: 0.656,  viscosity: 1.1e-5 },
+      "Ethane":                { density: 1.26,   viscosity: 9e-6 },
+      "Propane":               { density: 2.009,  viscosity: 8.7e-6 },
+      "n-Butane":              { density: 2.48,   viscosity: 8e-6 },
+      "n-Pentane":             { density: 626,    viscosity: 0.00035 },
+      "n-Hexane":              { density: 660,    viscosity: 0.00032 },
+      "n-Heptane":             { density: 684,    viscosity: 0.00038 },
+      "n-Octane":              { density: 703,    viscosity: 0.00040 },
+      "n-Nonane":              { density: 730,    viscosity: 0.00045 },
+      "n-Decane":              { density: 754,    viscosity: 0.00050 },
+      "Isobutane":             { density: 2.51,   viscosity: 8e-6 },
+      "Isooctane":             { density: 692,    viscosity: 0.00040 },
+      "Cyclopentane":          { density: 770,    viscosity: 0.00045 },
+      "Cyclohexane":           { density: 779,    viscosity: 0.00053 },
+      "Methylcyclopentane":    { density: 770,    viscosity: 0.00050 },
+      "Methylcyclohexane":     { density: 780,    viscosity: 0.00055 },
+      "Ethylene":              { density: 1.18,   viscosity: 1.08e-5 },
+      "Propylene":             { density: 1.96,   viscosity: 1.2e-5 },
+      // ... (other materials)
+      "Water":                 { density: 998,    viscosity: 0.001 },
+      "Ammonia":               { density: 0.73,   viscosity: 9.82e-6 },
+      "Nitric-acid":           { density: 1514,   viscosity: 0.001 },
+      "Sulfuric-acid":         { density: 1840,   viscosity: 0.010 }
+    };
+
+    function updateMaterialProperties() {
+      let selectedMaterial = document.getElementById("material").value.trim();
+      const unitSystem = document.getElementById("unitSystem").value;
+      if (materialProperties.hasOwnProperty(selectedMaterial)) {
+        let density = materialProperties[selectedMaterial].density;
+        let viscosity = materialProperties[selectedMaterial].viscosity;
+        if (unitSystem === "Imperial") {
+          density *= kg_m3_to_lb_ft3;
+          viscosity *= Pa_s_to_lb_ft_s;
+        }
+        document.getElementById("density").value = density;
+        document.getElementById("viscosity").value = viscosity;
+      } else {
+        document.getElementById("density").value = "";
+        document.getElementById("viscosity").value = "";
+      }
+    }
+
+    /**********************************************************************
+     * UPDATE FLOW TYPE
+     * Shows/hides input sections based on the selected flow type.
+     **********************************************************************/
+    function updateFlowType() {
+      const flowType = document.getElementById("flowType").value;
+      if (flowType === "pipe") {
+        document.getElementById("pipeInputs").style.display = "block";
+        document.getElementById("packedInputs").style.display = "none";
+        document.getElementById("stirredInputs").style.display = "none";
+      } else if (flowType === "packed") {
+        document.getElementById("pipeInputs").style.display = "none";
+        document.getElementById("packedInputs").style.display = "block";
+        document.getElementById("stirredInputs").style.display = "none";
+      } else if (flowType === "stirred") {
+        document.getElementById("pipeInputs").style.display = "none";
+        document.getElementById("packedInputs").style.display = "none";
+        document.getElementById("stirredInputs").style.display = "block";
+      }
+    }
+
+    /**********************************************************************
+     * UPDATE CHART: Reynolds Number vs Input Variable
+     * For pipe and packed bed flows, the x-axis represents velocity.
+     * For stirred vessel, it will represent impeller speed.
+     * Only the line is plotted (no area fill).
+     **********************************************************************/
+    function updateChart(xValues, reynoldsValues, xLabelText) {
+      if (reChart !== null) {
+        reChart.destroy();
+      }
+      document.getElementById("chartContainer").style.display = "block";
+      const ctx = document.getElementById("reChart").getContext("2d");
+      reChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: xValues,
+          datasets: [{
+            label: "Reynolds Number",
+            data: reynoldsValues,
+            borderColor: "rgba(75, 192, 192, 1)",
+            fill: false,
+            tension: 0.1,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: xLabelText
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Reynolds Number"
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /**********************************************************************
+     * CALCULATION FUNCTION
+     * Determines which equation to use based on flow type and computes Reynolds number.
+     **********************************************************************/
+    function calculate() {
+      document.getElementById("errorMessage").textContent = "";
+      const unitSystem = document.getElementById("unitSystem").value;
+      const flowType = document.getElementById("flowType").value;
+      let Re, xValues = [], reynoldsValues = [], xLabelText = "";
+      let inputSummary = "";
+
+      // Common fluid properties (convert if Imperial)
+      let density = parseFloat(document.getElementById("density").value);
+      let viscosity = parseFloat(document.getElementById("viscosity").value);
+      if (isNaN(density) || isNaN(viscosity)) {
+        document.getElementById("errorMessage").textContent = "Please enter valid density and viscosity.";
+        return;
+      }
+      if (unitSystem === "Imperial") {
+        density = density * lb_ft3_to_kg_m3;
+        viscosity = viscosity * lb_ft_s_to_Pa_s;
+      }
+
+      if (flowType === "pipe") {
+        // Straight Pipe Flow calculation
+        let velocity = parseFloat(document.getElementById("velocity").value);
+        const selectedSize = document.getElementById("pipeSize").value;
+        const selectedSchedule = document.getElementById("schedule").value;
+        if (!selectedSize || !selectedSchedule) {
+          document.getElementById("errorMessage").textContent = "Please select a pipe size and schedule.";
+          return;
+        }
+        if (isNaN(velocity)) {
+          document.getElementById("errorMessage").textContent = "Please enter a valid fluid velocity.";
+          return;
+        }
+        if (unitSystem === "Imperial") {
+          velocity = velocity * ftps_to_mps;
+        }
+        // Get pipe data from pipeData object
+        const pipe = pipeData[selectedSize] && pipeData[selectedSize][selectedSchedule];
+        if (!pipe) {
+          document.getElementById("errorMessage").textContent = "Pipe data not found for the selected size and schedule.";
+          return;
+        }
+        const currentID_SI = pipe.inside;
+        Re = (density * velocity * currentID_SI) / viscosity;
+        inputSummary = "Velocity: " + document.getElementById("velocity").value;
+        // Generate x-axis data (velocity range)
+        const numPoints = 50;
+        const vMax = 2 * velocity;
+        for (let i = 0; i < numPoints; i++) {
+          let v = (i / (numPoints - 1)) * vMax;
+          xValues.push(unitSystem === "Imperial" ? (v * mps_to_ftps).toFixed(3) : v.toFixed(3));
+          reynoldsValues.push((density * v * currentID_SI) / viscosity);
+        }
+        xLabelText = unitSystem === "Imperial" ? "Velocity (ft/s)" : "Velocity (m/s)";
+      }
+      else if (flowType === "packed") {
+        // Packed Bed Flow calculation
+        let velocityPacked = parseFloat(document.getElementById("velocityPacked").value);
+        let particleDiameter = parseFloat(document.getElementById("particleDiameter").value);
+        let voidFraction = parseFloat(document.getElementById("voidFraction").value);
+        if (isNaN(velocityPacked) || isNaN(particleDiameter) || isNaN(voidFraction)) {
+          document.getElementById("errorMessage").textContent = "Please enter valid values for superficial velocity, particle diameter, and void fraction.";
+          return;
+        }
+        if (voidFraction >= 1 || voidFraction < 0) {
+          document.getElementById("errorMessage").textContent = "Void fraction must be between 0 and 1.";
+          return;
+        }
+        if (unitSystem === "Imperial") {
+          velocityPacked = velocityPacked * ftps_to_mps;
+          particleDiameter = particleDiameter * in_to_m;
+        }
+        Re = (density * velocityPacked * particleDiameter) / (viscosity * (1 - voidFraction));
+        inputSummary = "Superficial Velocity: " + document.getElementById("velocityPacked").value + ", Particle Diameter: " + document.getElementById("particleDiameter").value + ", Void Fraction: " + voidFraction;
+        // Generate x-axis data (velocity range)
+        const numPoints = 50;
+        const vMax = 2 * velocityPacked;
+        for (let i = 0; i < numPoints; i++) {
+          let v = (i / (numPoints - 1)) * vMax;
+          xValues.push(unitSystem === "Imperial" ? (v * mps_to_ftps).toFixed(3) : v.toFixed(3));
+          reynoldsValues.push((density * v * particleDiameter) / (viscosity * (1 - voidFraction)));
+        }
+        xLabelText = unitSystem === "Imperial" ? "Superficial Velocity (ft/s)" : "Superficial Velocity (m/s)";
+      }
+      else if (flowType === "stirred") {
+        // Stirred Vessel Flow calculation
+        let impellerDiameter = parseFloat(document.getElementById("impellerDiameter").value);
+        let impellerSpeed = parseFloat(document.getElementById("impellerSpeed").value);
+        if (isNaN(impellerDiameter) || isNaN(impellerSpeed)) {
+          document.getElementById("errorMessage").textContent = "Please enter valid values for impeller diameter and speed.";
+          return;
+        }
+        if (unitSystem === "Imperial") {
+          impellerDiameter = impellerDiameter * in_to_m;
+        }
+        Re = (density * impellerSpeed * Math.pow(impellerDiameter, 2)) / viscosity;
+        inputSummary = "Impeller Diameter: " + document.getElementById("impellerDiameter").value + ", Impeller Speed: " + document.getElementById("impellerSpeed").value;
+        // Generate x-axis data (impeller speed range)
+        const numPoints = 50;
+        const NMax = 2 * impellerSpeed;
+        for (let i = 0; i < numPoints; i++) {
+          let N = (i / (numPoints - 1)) * NMax;
+          xValues.push(N.toFixed(3));
+          reynoldsValues.push((density * N * Math.pow(impellerDiameter, 2)) / viscosity);
+        }
+        xLabelText = "Impeller Speed (s⁻¹)";
+      }
+
+      // Update outputs
+      document.getElementById("reynolds").textContent = Re.toFixed(0);
+      // For pipe flow, we also compute and display flow regime
+      let regime = "";
+      if (flowType === "pipe") {
+        regime = (Re < 2300) ? "Laminar" :
+                 (Re < 4000) ? "Transitional" : "Turbulent";
+      } else {
+        regime = "N/A";
+      }
+      document.getElementById("flowRegime").textContent = regime;
+
+      // Save calculation to history
+      const result = {
+        flowType: flowType,
+        material: document.getElementById("material").value,
+        density: document.getElementById("density").value,
+        viscosity: document.getElementById("viscosity").value,
+        inputs: inputSummary,
+        reynolds: Re.toFixed(0),
+        regime: regime
+      };
+      calcHistory.push(result);
+      updateHistoryDisplay();
+
+      // Update chart with the generated x-axis values and Reynolds data
+      updateChart(xValues, reynoldsValues, xLabelText);
+    }
+
+    /**********************************************************************
+     * UPDATE HISTORY DISPLAY
+     **********************************************************************/
+    function updateHistoryDisplay() {
+      const tbody = document.getElementById("historyTable").getElementsByTagName("tbody")[0];
+      tbody.innerHTML = "";
+      calcHistory.forEach((calc, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${index + 1}</td>
+                         <td>${calc.flowType}</td>
+                         <td>${calc.material}</td>
+                         <td>${calc.density}</td>
+                         <td>${calc.viscosity}</td>
+                         <td>${calc.inputs}</td>
+                         <td>${calc.reynolds}</td>
+                         <td>${calc.regime}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    /**********************************************************************
+     * CLEAR HISTORY
+     **********************************************************************/
+    function clearHistory() {
+      calcHistory = [];
+      updateHistoryDisplay();
+    }
+
+    // Initialize settings on page load
+    window.onload = function() {
+      updateUnitSystem();
+      updateFlowType();
+      updateScheduleOptions();
+    };
+  </script>
+</body>
+</html>
