@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pipe Flow & Calculator</title>
+  <!-- Load Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Basic styling */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1, h2, h3 {
+      margin: 0.5em 0;
+    }
+    label {
+      display: block;
+      margin: 1em 0 0.5em;
+      font-weight: bold;
+    }
+    select, input {
+      margin: 0.5em auto;
+      width: 80%;
+      max-width: 400px;
+      padding: 0.5em;
+      font-size: 1em;
+      display: block;
+    }
+    button {
+      margin: 1.5em auto;
+      padding: 0.8em 1.2em;
+      font-size: 1em;
+      cursor: pointer;
+      display: block;
+    }
+    .output, #historyContainer {
+      margin-top: 2em;
+      padding: 1em;
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .output p {
+      margin: 0.5em 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5em;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    hr {
+      margin: 2em 0;
+    }
+    /* Tooltip styles */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+      color: #007BFF;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 4px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.9em;
+      line-height: 1.3em;
+    }
+    .tooltip .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Chart container (hidden until a calculation is made) */
+    #chartContainer {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: none;
+    }
+    /* Error message styling */
+    #errorMessage {
+      color: red;
+      margin-bottom: 1em;
+      font-weight: bold;
+    }
+    /* Action buttons styling */
+    #actionButtons {
+      margin-top: 2em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pipe Flow & Calculator</h1>
+    
+    <!-- Unit System Selection -->
+    <label for="unitSystem">Unit System:
+      <span class="tooltip">?<span class="tooltiptext">Choose SI for metric units (m, kg/m³, Pa·s, m/s) or Imperial for US customary units (in, lb/ft³, lb/(ft·s), ft/s).</span></span>
+    </label>
+    <select id="unitSystem" onchange="updateUnitSystem(); updateOutputUnits();">
+      <option value="SI">SI (m, kg/m³, Pa·s, m/s)</option>
+      <option value="Imperial">Imperial (in, lb/ft³, lb/(ft·s), ft/s)</option>
+    </select>
+    
+    <h2>Pipe Flow Calculations</h2>
+    
+    <!-- Error Message Display -->
+    <div id="errorMessage"></div>
+    
+    <!-- Pipe and Material Inputs -->
+    <label for="pipeSize">Nominal Pipe Size:
+      <span class="tooltip">?<span class="tooltiptext">Select the nominal pipe size (in inches).</span></span>
+    </label>
+    <select id="pipeSize" onchange="updateScheduleOptions()">
+      <option value="1/8">1/8"</option>
+      <option value="1/4">1/4"</option>
+      <option value="3/8">3/8"</option>
+      <option value="1/2">1/2"</option>
+      <option value="3/4">3/4"</option>
+      <option value="1">1"</option>
+      <option value="1 1/4">1 1/4"</option>
+      <option value="1 1/2">1 1/2"</option>
+      <option value="2">2"</option>
+      <option value="2 1/2">2 1/2"</option>
+      <option value="3">3"</option>
+      <option value="3 1/2">3 1/2"</option>
+      <option value="4">4"</option>
+      <option value="4 1/2">4 1/2"</option>
+      <option value="5">5"</option>
+      <option value="6">6"</option>
+      <option value="8">8"</option>
+      <option value="10">10"</option>
+      <option value="12">12"</option>
+      <option value="14">14"</option>
+      <option value="16">16"</option>
+      <option value="18">18"</option>
+      <option value="20">20"</option>
+      <option value="24">24"</option>
+      <option value="30">30"</option>
+      <option value="36">36"</option>
+      <option value="48">48"</option>
+    </select>
+    
+    <label for="schedule">Pipe Schedule:
+      <span class="tooltip">?<span class="tooltiptext">Pipe schedule indicates the wall thickness. Only the schedules available for the selected pipe size will appear.</span></span>
+    </label>
+    <select id="schedule">
+      <!-- Options will be populated automatically -->
+    </select>
+    
+    <label for="material">Material:
+      <span class="tooltip">?<span class="tooltiptext">Select the fluid material. When selected, the density and viscosity fields update automatically.</span></span>
+    </label>
+    <select id="material" onchange="updateMaterialProperties()">
+      <!-- Full list of materials -->
+      <option value="Methane">Methane</option>
+      <option value="Ethane">Ethane</option>
+      <option value="Propane">Propane</option>
+      <option value="n-Butane">n-Butane</option>
+      <option value="n-Pentane">n-Pentane</option>
+      <option value="n-Hexane">n-Hexane</option>
+      <option value="n-Heptane">n-Heptane</option>
+      <option value="n-Octane">n-Octane</option>
+      <option value="n-Nonane">n-Nonane</option>
+      <option value="n-Decane">n-Decane</option>
+      <option value="Isobutane">Isobutane</option>
+      <option value="Isooctane">Isooctane</option>
+      <option value="Cyclopentane">Cyclopentane</option>
+      <option value="Cyclohexane">Cyclohexane</option>
+      <option value="Methylcyclopentane">Methylcyclopentane</option>
+      <option value="Methylcyclohexane">Methylcyclohexane</option>
+      <option value="Ethylene">Ethylene</option>
+      <option value="Propylene">Propylene</option>
+      <option value="1-Butene">1-Butene</option>
+      <option value="cis-2-Butene">cis-2-Butene</option>
+      <option value="trans-2-Butene">trans-2-Butene</option>
+      <option value="1-Hexene">1-Hexene</option>
+      <option value="Isobutylene">Isobutylene</option>
+      <option value="1,3-Butadiene">1,3-Butadiene</option>
+      <option value="Cyclohexene">Cyclohexene</option>
+      <option value="Acetylene">Acetylene</option>
+      <option value="Benzene">Benzene</option>
+      <option value="Toluene">Toluene</option>
+      <option value="Ethylbenzene">Ethylbenzene</option>
+      <option value="Cumene">Cumene</option>
+      <option value="o-Xylene">o-Xylene</option>
+      <option value="m-Xylene">m-Xylene</option>
+      <option value="p-Xylene">p-Xylene</option>
+      <option value="Styrene">Styrene</option>
+      <option value="Naphthalene">Naphthalene</option>
+      <option value="Biphenyl">Biphenyl</option>
+      <option value="Formaldehyde">Formaldehyde</option>
+      <option value="Acetaldehyde">Acetaldehyde</option>
+      <option value="Methyl-acetate">Methyl-acetate</option>
+      <option value="Ethyl-acetate">Ethyl-acetate</option>
+      <option value="Acetone">Acetone</option>
+      <option value="Methyl-ethyl-ketone">Methyl-ethyl-ketone</option>
+      <option value="Diethyl-ether">Diethyl-ether</option>
+      <option value="Methyl-t-butyl-ether">Methyl-t-butyl-ether</option>
+      <option value="Methanol">Methanol</option>
+      <option value="Ethanol">Ethanol</option>
+      <option value="1-Propanol">1-Propanol</option>
+      <option value="1-Butanol">1-Butanol</option>
+      <option value="1-Hexanol">1-Hexanol</option>
+      <option value="2-Propanol">2-Propanol</option>
+      <option value="Phenol">Phenol</option>
+      <option value="Ethylene-glycol">Ethylene-glycol</option>
+      <option value="Acetic-acid">Acetic-acid</option>
+      <option value="n-Butyric-acid">n-Butyric-acid</option>
+      <option value="Benzoic-acid">Benzoic-acid</option>
+      <option value="Acetonitrile">Acetonitrile</option>
+      <option value="Methylamine">Methylamine</option>
+      <option value="Ethylamine">Ethylamine</option>
+      <option value="Nitromethane">Nitromethane</option>
+      <option value="Carbon-tetrachloride">Carbon-tetrachloride</option>
+      <option value="Chloroform">Chloroform</option>
+      <option value="Dichloromethane">Dichloromethane</option>
+      <option value="Methyl-chloride">Methyl-chloride</option>
+      <option value="Ethyl-chloride">Ethyl-chloride</option>
+      <option value="Chlorobenzene">Chlorobenzene</option>
+      <option value="Tetrafluoroethane">Tetrafluoroethane</option>
+      <option value="Argon">Argon</option>
+      <option value="Krypton">Krypton</option>
+      <option value="Xenon">Xenon</option>
+      <option value="Helium-4">Helium-4</option>
+      <option value="Hydrogen">Hydrogen</option>
+      <option value="Oxygen">Oxygen</option>
+      <option value="Nitrogen">Nitrogen</option>
+      <option value="Air">Air</option>
+      <option value="Chlorine">Chlorine</option>
+      <option value="Carbon-monoxide">Carbon-monoxide</option>
+      <option value="Carbon-dioxide">Carbon-dioxide</option>
+      <option value="Carbon-disulfide">Carbon-disulfide</option>
+      <option value="Hydrogen-sulfide">Hydrogen-sulfide</option>
+      <option value="Sulfur-dioxide">Sulfur-dioxide</option>
+      <option value="Sulfur-trioxide">Sulfur-trioxide</option>
+      <option value="Nitric-oxide-(NO)">Nitric-oxide-(NO)</option>
+      <option value="Nitrous-oxide-(N2O)">Nitrous-oxide-(N2O)</option>
+      <option value="Hydrogen-chloride">Hydrogen-chloride</option>
+      <option value="Hydrogen-cyanide">Hydrogen-cyanide</option>
+      <option value="Water">Water</option>
+      <option value="Ammonia">Ammonia</option>
+      <option value="Nitric-acid">Nitric-acid</option>
+      <option value="Sulfuric-acid">Sulfuric-acid</option>
+    </select>
+    
+    <!-- Fluid Properties Inputs -->
+    <label for="density">Fluid Density (<span id="densityUnit">kg/m³</span>):
+      <span class="tooltip">?<span class="tooltiptext">Enter the fluid density (SI: kg/m³; Imperial: lb/ft³).</span></span>
+    </label>
+    <input type="number" id="density" placeholder="e.g., 1000" step="any" />
+    
+    <label for="viscosity">Fluid Viscosity (<span id="viscosityUnit">Pa·s</span>):
+      <span class="tooltip">?<span class="tooltiptext">Enter the dynamic viscosity (SI: Pa·s; Imperial: lb/(ft·s)).</span></span>
+    </label>
+    <input type="number" id="viscosity" placeholder="e.g., 0.001" step="any" />
+    
+    <label for="velocity">Fluid Velocity (<span id="velocityUnit">m/s</span>):
+      <span class="tooltip">?<span class="tooltiptext">Enter the fluid velocity (SI: m/s; Imperial: ft/s).</span></span>
+    </label>
+    <input type="number" id="velocity" placeholder="e.g., 1.5" step="any" />
+    
+    <button onclick="calculate()">Calculate Flow</button>
+    
+    <div class="output" id="output">
+      <p><strong>Pipe Outside Diameter:</strong> <span id="od"></span> <span id="odUnit">m</span></p>
+      <p><strong>Pipe Inside Diameter:</strong> <span id="id"></span> <span id="idUnit">m</span></p>
+      <p><strong>Reynolds Number:</strong> <span id="reynolds"></span></p>
+      <p><strong>Flow Regime:</strong> <span id="flowRegime"></span></p>
+    </div>
+    
+    <!-- Chart Container (hidden until a calculation is made) -->
+    <div id="chartContainer">
+      <h2>Graph of Reynolds Number vs Velocity</h2>
+      <canvas id="reChart" width="600" height="300"></canvas>
+    </div>
+    
+    <hr />
+    
+    <!-- History Section -->
+    <div id="historyContainer">
+      <h3>Recent Calculations</h3>
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Unit System</th>
+            <th>Pipe Size</th>
+            <th>Schedule</th>
+            <th>Material</th>
+            <th>Density</th>
+            <th>Viscosity</th>
+            <th>Velocity</th>
+            <th>OD</th>
+            <th>ID</th>
+            <th>Reynolds</th>
+            <th>Regime</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- History rows will be inserted here -->
+        </tbody>
+      </table>
+      <button onclick="clearHistory()">Clear Saved Calculations</button>
+    </div>
+    
+    <!-- Action Button for Print -->
+    <div id="actionButtons">
+      <button onclick="window.print()">Print Page</button>
+    </div>
+  </div>
+  
+  <script>
+    // Conversion factors
+    const m_to_in = 39.3701;         // meters to inches
+    const in_to_m = 0.0254;          // inches to meters
+    const mps_to_ftps = 3.28084;     // m/s to ft/s
+    const ftps_to_mps = 0.3048;      // ft/s to m/s
+    const kg_m3_to_lb_ft3 = 0.06243; // kg/m³ to lb/ft³
+    const lb_ft3_to_kg_m3 = 16.0185; // lb/ft³ to kg/m³
+    const Pa_s_to_lb_ft_s = 0.67197; // Pa·s to lb/(ft·s)
+    const lb_ft_s_to_Pa_s = 1.48816; // lb/(ft·s) to Pa·s
+
+    // Global variables for flow calculations and history
+    let currentOD_SI = null;
+    let currentID_SI = null;
+    let reChart = null;
+    let calcHistory = [];
+
+    /**********************************************************************
+     * MATERIAL PROPERTIES (SI values)
+     * Approximate values; adjust as needed.
+     **********************************************************************/
+    const materialProperties = {
+      "Methane":               { density: 0.656,  viscosity: 1.1e-5 },
+      "Ethane":                { density: 1.26,   viscosity: 9e-6 },
+      "Propane":               { density: 2.009,  viscosity: 8.7e-6 },
+      "n-Butane":              { density: 2.48,   viscosity: 8e-6 },
+      "n-Pentane":             { density: 626,    viscosity: 0.00035 },
+      "n-Hexane":              { density: 660,    viscosity: 0.00032 },
+      "n-Heptane":             { density: 684,    viscosity: 0.00038 },
+      "n-Octane":              { density: 703,    viscosity: 0.00040 },
+      "n-Nonane":              { density: 730,    viscosity: 0.00045 },
+      "n-Decane":              { density: 754,    viscosity: 0.00050 },
+      "Isobutane":             { density: 2.51,   viscosity: 8e-6 },
+      "Isooctane":             { density: 692,    viscosity: 0.00040 },
+      "Cyclopentane":          { density: 770,    viscosity: 0.00045 },
+      "Cyclohexane":           { density: 779,    viscosity: 0.00053 },
+      "Methylcyclopentane":    { density: 770,    viscosity: 0.00050 },
+      "Methylcyclohexane":     { density: 780,    viscosity: 0.00055 },
+      "Ethylene":              { density: 1.18,   viscosity: 1.08e-5 },
+      "Propylene":             { density: 1.96,   viscosity: 1.2e-5 },
+      "1-Butene":              { density: 2.50,   viscosity: 1.1e-5 },
+      "cis-2-Butene":          { density: 2.50,   viscosity: 1.1e-5 },
+      "trans-2-Butene":        { density: 2.50,   viscosity: 1.1e-5 },
+      "1-Hexene":              { density: 660,    viscosity: 0.00040 },
+      "Isobutylene":           { density: 2.51,   viscosity: 8e-6 },
+      "1,3-Butadiene":         { density: 2.07,   viscosity: 9e-6 },
+      "Cyclohexene":           { density: 770,    viscosity: 0.00050 },
+      "Acetylene":             { density: 1.1,    viscosity: 1.0e-5 },
+      "Benzene":               { density: 876,    viscosity: 0.00060 },
+      "Toluene":               { density: 867,    viscosity: 0.00059 },
+      "Ethylbenzene":          { density: 864,    viscosity: 0.00061 },
+      "Cumene":                { density: 876,    viscosity: 0.00064 },
+      "o-Xylene":              { density: 880,    viscosity: 0.00065 },
+      "m-Xylene":              { density: 880,    viscosity: 0.00065 },
+      "p-Xylene":              { density: 880,    viscosity: 0.00065 },
+      "Styrene":               { density: 909,    viscosity: 0.00077 },
+      "Naphthalene":           { density: 1140,   viscosity: 0.0035 },
+      "Biphenyl":              { density: 1040,   viscosity: 0.0015 },
+      "Formaldehyde":          { density: 2.38,   viscosity: 1.1e-5 },
+      "Acetaldehyde":          { density: 1.0,    viscosity: 1.2e-5 },
+      "Methyl-acetate":        { density: 925,    viscosity: 0.00042 },
+      "Ethyl-acetate":         { density: 902,    viscosity: 0.00045 },
+      "Acetone":               { density: 784,    viscosity: 0.00032 },
+      "Methyl-ethyl-ketone":   { density: 805,    viscosity: 0.00037 },
+      "Diethyl-ether":         { density: 710,    viscosity: 0.00022 },
+      "Methyl-t-butyl-ether":  { density: 740,    viscosity: 0.00037 },
+      "Methanol":              { density: 791,    viscosity: 0.0010 },
+      "Ethanol":               { density: 789,    viscosity: 0.0012 },
+      "1-Propanol":            { density: 803,    viscosity: 0.0018 },
+      "1-Butanol":             { density: 810,    viscosity: 0.0024 },
+      "1-Hexanol":             { density: 815,    viscosity: 0.0035 },
+      "2-Propanol":            { density: 785,    viscosity: 0.0020 },
+      "Phenol":                { density: 1010,   viscosity: 0.0100 },
+      "Ethylene-glycol":       { density: 1110,   viscosity: 0.0160 },
+      "Acetic-acid":           { density: 1020,   viscosity: 0.0011 },
+      "n-Butyric-acid":        { density: 1010,   viscosity: 0.0030 },
+      "Benzoic-acid":          { density: 1230,   viscosity: 0.0200 },
+      "Acetonitrile":          { density: 786,    viscosity: 0.00037 },
+      "Methylamine":           { density: 0.68,   viscosity: 1.0e-5 },
+      "Ethylamine":            { density: 0.67,   viscosity: 1.0e-5 },
+      "Nitromethane":          { density: 1136,   viscosity: 0.00065 },
+      "Carbon-tetrachloride":   { density: 1594,   viscosity: 0.0010 },
+      "Chloroform":            { density: 1489,   viscosity: 0.00057 },
+      "Dichloromethane":       { density: 1325,   viscosity: 0.00044 },
+      "Methyl-chloride":       { density: 1.0,    viscosity: 1.0e-5 },
+      "Ethyl-chloride":        { density: 1.2,    viscosity: 1.0e-5 },
+      "Chlorobenzene":         { density: 1106,   viscosity: 0.0010 },
+      "Tetrafluoroethane":     { density: 4.25,   viscosity: 1.3e-5 },
+      "Argon":                 { density: 1.784,  viscosity: 2.22e-5 },
+      "Krypton":               { density: 3.75,   viscosity: 2.82e-5 },
+      "Xenon":                 { density: 5.90,   viscosity: 3.48e-5 },
+      "Helium-4":              { density: 0.1786, viscosity: 1.96e-5 },
+      "Hydrogen":              { density: 0.0899, viscosity: 8.76e-6 },
+      "Oxygen":                { density: 1.429,  viscosity: 2.0e-5 },
+      "Nitrogen":              { density: 1.251,  viscosity: 1.76e-5 },
+      "Air":                   { density: 1.225,  viscosity: 1.81e-5 },
+      "Chlorine":              { density: 3.214,  viscosity: 1.98e-5 },
+      "Carbon-monoxide":       { density: 1.145,  viscosity: 1.10e-5 },
+      "Carbon-dioxide":        { density: 1.977,  viscosity: 1.48e-5 },
+      "Carbon-disulfide":      { density: 1260,   viscosity: 0.0012 },
+      "Hydrogen-sulfide":      { density: 1.54,   viscosity: 9.6e-6 },
+      "Sulfur-dioxide":        { density: 2.63,   viscosity: 1.47e-5 },
+      "Sulfur-trioxide":       { density: 1.92,   viscosity: 1.82e-5 },
+      "Nitric-oxide-(NO)":     { density: 1.34,   viscosity: 1.82e-5 },
+      "Nitrous-oxide-(N2O)":   { density: 1.977,  viscosity: 1.5e-5 },
+      "Hydrogen-chloride":     { density: 1.49,   viscosity: 1.1e-5 },
+      "Hydrogen-cyanide":      { density: 1.18,   viscosity: 1.06e-5 },
+      "Water":                 { density: 998,    viscosity: 0.001 },
+      "Ammonia":               { density: 0.73,   viscosity: 9.82e-6 },
+      "Nitric-acid":           { density: 1514,   viscosity: 0.001 },
+      "Sulfuric-acid":         { density: 1840,   viscosity: 0.010 }
+    };
+
+    /**********************************************************************
+     * PIPE DATA (Converted from inches to SI)
+     * Outside Diameter (OD) and Inside Diameter (ID) values are provided in inches
+     * and converted to SI (meters).
+     **********************************************************************/
+    const pipeData = {
+      "1/8": {
+        "10": { outside: 0.405 * in_to_m, inside: 0.307 * in_to_m },
+        "40": { outside: 0.405 * in_to_m, inside: 0.269 * in_to_m },
+        "80": { outside: 0.405 * in_to_m, inside: 0.215 * in_to_m }
+      },
+      "1/4": {
+        "10": { outside: 0.54 * in_to_m, inside: 0.41 * in_to_m },
+        "40": { outside: 0.54 * in_to_m, inside: 0.364 * in_to_m },
+        "80": { outside: 0.54 * in_to_m, inside: 0.302 * in_to_m }
+      },
+      "3/8": {
+        "10": { outside: 0.675 * in_to_m, inside: 0.545 * in_to_m },
+        "40": { outside: 0.675 * in_to_m, inside: 0.493 * in_to_m },
+        "80": { outside: 0.675 * in_to_m, inside: 0.423 * in_to_m }
+      },
+      "1/2": {
+        "10": { outside: 0.84 * in_to_m, inside: 0.674 * in_to_m },
+        "40": { outside: 0.84 * in_to_m, inside: 0.622 * in_to_m },
+        "80": { outside: 0.84 * in_to_m, inside: 0.546 * in_to_m },
+        "160": { outside: 0.84 * in_to_m, inside: 0.466 * in_to_m },
+        "XX": { outside: 0.84 * in_to_m, inside: 0.252 * in_to_m }
+      },
+      "3/4": {
+        "10": { outside: 1.05 * in_to_m, inside: 0.884 * in_to_m },
+        "40": { outside: 1.05 * in_to_m, inside: 0.824 * in_to_m },
+        "80": { outside: 1.05 * in_to_m, inside: 0.742 * in_to_m },
+        "160": { outside: 1.05 * in_to_m, inside: 0.614 * in_to_m },
+        "XX": { outside: 1.05 * in_to_m, inside: 0.434 * in_to_m }
+      },
+      "1": {
+        "10": { outside: 1.315 * in_to_m, inside: 1.097 * in_to_m },
+        "40": { outside: 1.315 * in_to_m, inside: 1.049 * in_to_m },
+        "80": { outside: 1.315 * in_to_m, inside: 0.957 * in_to_m },
+        "160": { outside: 1.315 * in_to_m, inside: 0.815 * in_to_m },
+        "XX": { outside: 1.315 * in_to_m, inside: 0.599 * in_to_m }
+      },
+      "1 1/4": {
+        "10": { outside: 1.66 * in_to_m, inside: 1.442 * in_to_m },
+        "40": { outside: 1.66 * in_to_m, inside: 1.38 * in_to_m },
+        "80": { outside: 1.66 * in_to_m, inside: 1.278 * in_to_m },
+        "160": { outside: 1.66 * in_to_m, inside: 1.16 * in_to_m },
+        "XX": { outside: 1.66 * in_to_m, inside: 0.896 * in_to_m }
+      },
+      "1 1/2": {
+        "10": { outside: 1.9 * in_to_m, inside: 1.682 * in_to_m },
+        "40": { outside: 1.9 * in_to_m, inside: 1.61 * in_to_m },
+        "80": { outside: 1.9 * in_to_m, inside: 1.5 * in_to_m },
+        "160": { outside: 1.9 * in_to_m, inside: 1.337 * in_to_m },
+        "XX": { outside: 1.9 * in_to_m, inside: 1.1 * in_to_m }
+      },
+      "2": {
+        "10": { outside: 2.375 * in_to_m, inside: 2.157 * in_to_m },
+        "40": { outside: 2.375 * in_to_m, inside: 2.067 * in_to_m },
+        "80": { outside: 2.375 * in_to_m, inside: 1.939 * in_to_m },
+        "160": { outside: 2.375 * in_to_m, inside: 1.687 * in_to_m },
+        "XX": { outside: 2.375 * in_to_m, inside: 1.503 * in_to_m }
+      },
+      "2 1/2": {
+        "10": { outside: 2.875 * in_to_m, inside: 2.635 * in_to_m },
+        "40": { outside: 2.875 * in_to_m, inside: 2.469 * in_to_m },
+        "80": { outside: 2.875 * in_to_m, inside: 2.323 * in_to_m },
+        "160": { outside: 2.875 * in_to_m, inside: 2.125 * in_to_m },
+        "XX": { outside: 2.875 * in_to_m, inside: 1.771 * in_to_m }
+      },
+      "3": {
+        "10": { outside: 3.5 * in_to_m, inside: 3.26 * in_to_m },
+        "40": { outside: 3.5 * in_to_m, inside: 3.068 * in_to_m },
+        "80": { outside: 3.5 * in_to_m, inside: 2.9 * in_to_m },
+        "160": { outside: 3.5 * in_to_m, inside: 2.624 * in_to_m },
+        "XX": { outside: 3.5 * in_to_m, inside: 2.3 * in_to_m }
+      },
+      "3 1/2": {
+        "10": { outside: 4 * in_to_m, inside: 3.76 * in_to_m },
+        "40": { outside: 4 * in_to_m, inside: 3.548 * in_to_m },
+        "80": { outside: 4 * in_to_m, inside: 3.364 * in_to_m },
+        "XX": { outside: 4 * in_to_m, inside: 2.728 * in_to_m }
+      },
+      "4": {
+        "10": { outside: 4.5 * in_to_m, inside: 4.26 * in_to_m },
+        "40": { outside: 4.5 * in_to_m, inside: 4.026 * in_to_m },
+        "80": { outside: 4.5 * in_to_m, inside: 3.826 * in_to_m },
+        "120": { outside: 4.5 * in_to_m, inside: 3.624 * in_to_m },
+        "160": { outside: 4.5 * in_to_m, inside: 3.438 * in_to_m },
+        "XX": { outside: 4.5 * in_to_m, inside: 3.152 * in_to_m }
+      },
+      "4 1/2": {
+        "STD": { outside: 5 * in_to_m, inside: 4.506 * in_to_m },
+        "XS": { outside: 5 * in_to_m, inside: 4.29 * in_to_m }
+      },
+      "5": {
+        "10": { outside: 5.563 * in_to_m, inside: 5.295 * in_to_m },
+        "40": { outside: 5.563 * in_to_m, inside: 5.047 * in_to_m },
+        "80": { outside: 5.563 * in_to_m, inside: 4.813 * in_to_m },
+        "120": { outside: 5.563 * in_to_m, inside: 4.563 * in_to_m },
+        "160": { outside: 5.563 * in_to_m, inside: 4.313 * in_to_m },
+        "XX": { outside: 5.563 * in_to_m, inside: 4.063 * in_to_m }
+      },
+      "6": {
+        "10": { outside: 6.625 * in_to_m, inside: 6.357 * in_to_m },
+        "40": { outside: 6.625 * in_to_m, inside: 6.065 * in_to_m },
+        "80": { outside: 6.625 * in_to_m, inside: 5.761 * in_to_m },
+        "120": { outside: 6.625 * in_to_m, inside: 5.501 * in_to_m },
+        "160": { outside: 6.625 * in_to_m, inside: 5.189 * in_to_m },
+        "XX": { outside: 6.625 * in_to_m, inside: 4.897 * in_to_m }
+      },
+      "8": {
+        "10": { outside: 8.625 * in_to_m, inside: 8.329 * in_to_m },
+        "20": { outside: 8.625 * in_to_m, inside: 8.125 * in_to_m },
+        "30": { outside: 8.625 * in_to_m, inside: 8.071 * in_to_m },
+        "40": { outside: 8.625 * in_to_m, inside: 7.981 * in_to_m },
+        "60": { outside: 8.625 * in_to_m, inside: 7.813 * in_to_m },
+        "80": { outside: 8.625 * in_to_m, inside: 7.625 * in_to_m },
+        "100": { outside: 8.625 * in_to_m, inside: 7.439 * in_to_m },
+        "120": { outside: 8.625 * in_to_m, inside: 7.189 * in_to_m },
+        "140": { outside: 8.625 * in_to_m, inside: 7.001 * in_to_m },
+        "160": { outside: 8.625 * in_to_m, inside: 6.813 * in_to_m },
+        "XX": { outside: 8.625 * in_to_m, inside: 6.875 * in_to_m }
+      },
+      "10": {
+        "10": { outside: 10.75 * in_to_m, inside: 10.42 * in_to_m },
+        "20": { outside: 10.75 * in_to_m, inside: 10.25 * in_to_m },
+        "30": { outside: 10.75 * in_to_m, inside: 10.136 * in_to_m },
+        "40": { outside: 10.75 * in_to_m, inside: 10.02 * in_to_m },
+        "60": { outside: 10.75 * in_to_m, inside: 9.75 * in_to_m },
+        "80": { outside: 10.75 * in_to_m, inside: 9.564 * in_to_m },
+        "100": { outside: 10.75 * in_to_m, inside: 9.314 * in_to_m },
+        "120": { outside: 10.75 * in_to_m, inside: 9.064 * in_to_m },
+        "140": { outside: 10.75 * in_to_m, inside: 8.75 * in_to_m },
+        "160": { outside: 10.75 * in_to_m, inside: 8.5 * in_to_m }
+      },
+      "12": {
+        "10": { outside: 12.75 * in_to_m, inside: 12.39 * in_to_m },
+        "20": { outside: 12.75 * in_to_m, inside: 12.25 * in_to_m },
+        "30": { outside: 12.75 * in_to_m, inside: 12.09 * in_to_m },
+        "40": { outside: 12.75 * in_to_m, inside: 11.938 * in_to_m },
+        "60": { outside: 12.75 * in_to_m, inside: 11.626 * in_to_m },
+        "80": { outside: 12.75 * in_to_m, inside: 11.376 * in_to_m },
+        "100": { outside: 12.75 * in_to_m, inside: 11.064 * in_to_m },
+        "120": { outside: 12.75 * in_to_m, inside: 10.75 * in_to_m },
+        "140": { outside: 12.75 * in_to_m, inside: 10.5 * in_to_m },
+        "160": { outside: 12.75 * in_to_m, inside: 10.126 * in_to_m }
+      },
+      "14": {
+        "XX": { outside: 14 * in_to_m, inside: 13.624 * in_to_m },
+        "10": { outside: 14 * in_to_m, inside: 13.5 * in_to_m },
+        "20": { outside: 14 * in_to_m, inside: 13.375 * in_to_m },
+        "30": { outside: 14 * in_to_m, inside: 13.25 * in_to_m },
+        "40": { outside: 14 * in_to_m, inside: 13.124 * in_to_m },
+        "60": { outside: 14 * in_to_m, inside: 12.814 * in_to_m },
+        "80": { outside: 14 * in_to_m, inside: 12.5 * in_to_m },
+        "100": { outside: 14 * in_to_m, inside: 12.124 * in_to_m },
+        "120": { outside: 14 * in_to_m, inside: 11.814 * in_to_m },
+        "140": { outside: 14 * in_to_m, inside: 11.5 * in_to_m },
+        "160": { outside: 14 * in_to_m, inside: 11.188 * in_to_m }
+      },
+      "16": {
+        "XX": { outside: 16 * in_to_m, inside: 15.624 * in_to_m },
+        "10": { outside: 16 * in_to_m, inside: 15.5 * in_to_m },
+        "20": { outside: 16 * in_to_m, inside: 15.375 * in_to_m },
+        "30": { outside: 16 * in_to_m, inside: 15.25 * in_to_m },
+        "40": { outside: 16 * in_to_m, inside: 15 * in_to_m },
+        "60": { outside: 16 * in_to_m, inside: 14.688 * in_to_m },
+        "80": { outside: 16 * in_to_m, inside: 14.314 * in_to_m },
+        "100": { outside: 16 * in_to_m, inside: 13.938 * in_to_m },
+        "120": { outside: 16 * in_to_m, inside: 13.564 * in_to_m },
+        "140": { outside: 16 * in_to_m, inside: 13.124 * in_to_m },
+        "160": { outside: 16 * in_to_m, inside: 12.814 * in_to_m }
+      },
+      "18": {
+        "XX": { outside: 18 * in_to_m, inside: 17.624 * in_to_m },
+        "10": { outside: 18 * in_to_m, inside: 17.5 * in_to_m },
+        "20": { outside: 18 * in_to_m, inside: 17.375 * in_to_m },
+        "30": { outside: 18 * in_to_m, inside: 17.124 * in_to_m },
+        "40": { outside: 18 * in_to_m, inside: 16.876 * in_to_m },
+        "60": { outside: 18 * in_to_m, inside: 16.5 * in_to_m },
+        "80": { outside: 18 * in_to_m, inside: 16.126 * in_to_m },
+        "100": { outside: 18 * in_to_m, inside: 15.688 * in_to_m },
+        "120": { outside: 18 * in_to_m, inside: 15.25 * in_to_m },
+        "140": { outside: 18 * in_to_m, inside: 14.876 * in_to_m },
+        "160": { outside: 18 * in_to_m, inside: 14.438 * in_to_m }
+      },
+      "20": {
+        "XX": { outside: 20 * in_to_m, inside: 19.564 * in_to_m },
+        "10": { outside: 20 * in_to_m, inside: 19.5 * in_to_m },
+        "20": { outside: 20 * in_to_m, inside: 19.25 * in_to_m },
+        "30": { outside: 20 * in_to_m, inside: 19 * in_to_m },
+        "40": { outside: 20 * in_to_m, inside: 18.812 * in_to_m },
+        "60": { outside: 20 * in_to_m, inside: 18.376 * in_to_m },
+        "80": { outside: 20 * in_to_m, inside: 17.938 * in_to_m },
+        "100": { outside: 20 * in_to_m, inside: 17.438 * in_to_m },
+        "120": { outside: 20 * in_to_m, inside: 17 * in_to_m },
+        "140": { outside: 20 * in_to_m, inside: 16.5 * in_to_m },
+        "160": { outside: 20 * in_to_m, inside: 16.064 * in_to_m }
+      },
+      "24": {
+        "10": { outside: 24 * in_to_m, inside: 23.5 * in_to_m },
+        "20": { outside: 24 * in_to_m, inside: 23.25 * in_to_m },
+        "XX": { outside: 24 * in_to_m, inside: 23 * in_to_m },
+        "30": { outside: 24 * in_to_m, inside: 22.876 * in_to_m },
+        "40": { outside: 24 * in_to_m, inside: 22.626 * in_to_m },
+        "60": { outside: 24 * in_to_m, inside: 22.064 * in_to_m },
+        "80": { outside: 24 * in_to_m, inside: 21.564 * in_to_m },
+        "100": { outside: 24 * in_to_m, inside: 20.938 * in_to_m },
+        "120": { outside: 24 * in_to_m, inside: 20.376 * in_to_m },
+        "140": { outside: 24 * in_to_m, inside: 19.876 * in_to_m },
+        "160": { outside: 24 * in_to_m, inside: 19.314 * in_to_m }
+      },
+      "30": {
+        "10": { outside: 30 * in_to_m, inside: 29.376 * in_to_m },
+        "20": { outside: 30 * in_to_m, inside: 29 * in_to_m },
+        "30": { outside: 30 * in_to_m, inside: 28.75 * in_to_m }
+      },
+      "36": {
+        "10": { outside: 36 * in_to_m, inside: 35.376 * in_to_m },
+        "XX": { outside: 36 * in_to_m, inside: 35.25 * in_to_m },
+        "30": { outside: 36 * in_to_m, inside: 34.75 * in_to_m }
+      },
+      "48": {
+        "XX": { outside: 48 * in_to_m, inside: 47.25 * in_to_m },
+        "XX2": { outside: 48 * in_to_m, inside: 47 * in_to_m }
+      }
+    };
+
+    /**********************************************************************
+     * UPDATE SCHEDULE OPTIONS
+     * Populates the "Pipe Schedule" dropdown based on the selected pipe size.
+     **********************************************************************/
+    function updateScheduleOptions() {
+      let pipeSize = document.getElementById("pipeSize").value;
+      pipeSize = pipeSize.trim(); // Remove extra spaces
+      const scheduleSelect = document.getElementById("schedule");
+      scheduleSelect.innerHTML = ""; // Clear existing options
+      if (pipeData.hasOwnProperty(pipeSize)) {
+        const validSchedules = Object.keys(pipeData[pipeSize]);
+        validSchedules.forEach(function(schedule) {
+          const option = document.createElement("option");
+          option.value = schedule;
+          option.textContent = schedule;
+          scheduleSelect.appendChild(option);
+        });
+      } else {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No schedule available";
+        scheduleSelect.appendChild(option);
+      }
+    }
+
+    /**********************************************************************
+     * UPDATE UNIT SYSTEM
+     * Updates labels and placeholders when the unit system is changed.
+     **********************************************************************/
+    function updateUnitSystem() {
+      const unitSystem = document.getElementById("unitSystem").value;
+      if (unitSystem === "SI") {
+        document.getElementById("densityUnit").textContent = "kg/m³";
+        document.getElementById("viscosityUnit").textContent = "Pa·s";
+        document.getElementById("velocityUnit").textContent = "m/s";
+        document.getElementById("odUnit").textContent = "m";
+        document.getElementById("idUnit").textContent = "m";
+        document.getElementById("density").placeholder = "e.g., 1000";
+        document.getElementById("viscosity").placeholder = "e.g., 0.001";
+        document.getElementById("velocity").placeholder = "e.g., 1.5";
+        document.getElementById("idODUnit").textContent = "m";
+        document.getElementById("idIDUnit").textContent = "m";
+      } else {
+        document.getElementById("densityUnit").textContent = "lb/ft³";
+        document.getElementById("viscosityUnit").textContent = "lb/(ft·s)";
+        document.getElementById("velocityUnit").textContent = "ft/s";
+        document.getElementById("odUnit").textContent = "in";
+        document.getElementById("idUnit").textContent = "in";
+        document.getElementById("density").placeholder = "e.g., 62.43";
+        document.getElementById("viscosity").placeholder = "e.g., 0.67";
+        document.getElementById("velocity").placeholder = "e.g., 4.92";
+        document.getElementById("idODUnit").textContent = "in";
+        document.getElementById("idIDUnit").textContent = "in";
+      }
+      updateMaterialProperties();
+      updateOutputUnits();
+    }
+
+    /**********************************************************************
+     * UPDATE MATERIAL PROPERTIES
+     * When a material is selected, update the density and viscosity fields.
+     **********************************************************************/
+    function updateMaterialProperties() {
+      let selectedMaterial = document.getElementById("material").value;
+      selectedMaterial = selectedMaterial.trim();
+      const unitSystem = document.getElementById("unitSystem").value;
+      if (materialProperties.hasOwnProperty(selectedMaterial)) {
+        const props = materialProperties[selectedMaterial];
+        let density = props.density;
+        let viscosity = props.viscosity;
+        if (unitSystem === "Imperial") {
+          density = density * kg_m3_to_lb_ft3;
+          viscosity = viscosity * Pa_s_to_lb_ft_s;
+        }
+        document.getElementById("density").value = density;
+        document.getElementById("viscosity").value = viscosity;
+      } else {
+        document.getElementById("density").value = "";
+        document.getElementById("viscosity").value = "";
+      }
+    }
+
+    /**********************************************************************
+     * UPDATE CHART: Reynolds Number vs Velocity
+     * Generates 50 data points for velocity (from 0 to 2× the entered velocity)
+     * and plots only the line (without shading the area underneath).
+     **********************************************************************/
+    function updateChart(velocitySI, densitySI, viscositySI, ID_SI) {
+      const numPoints = 50;
+      const vMax = 2 * velocitySI;
+      const velocitiesSI = [];
+      const reynoldsValues = [];
+      for (let i = 0; i < numPoints; i++) {
+        const v = (i / (numPoints - 1)) * vMax;
+        velocitiesSI.push(v);
+        const Re = (densitySI * v * ID_SI) / viscositySI;
+        reynoldsValues.push(Re);
+      }
+      const unitSystem = document.getElementById("unitSystem").value;
+      let xLabels = (unitSystem === "Imperial")
+                    ? velocitiesSI.map(v => (v * mps_to_ftps).toPrecision(3))
+                    : velocitiesSI.map(v => v.toFixed(3));
+      if (reChart !== null) {
+        reChart.destroy();
+      }
+      document.getElementById("chartContainer").style.display = "block";
+      const ctx = document.getElementById("reChart").getContext("2d");
+      reChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: xLabels,
+          datasets: [{
+            label: "Reynolds Number",
+            data: reynoldsValues,
+            borderColor: "rgba(75, 192, 192, 1)",
+            fill: false, // no shading under the line
+            tension: 0.1,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: unitSystem === "Imperial" ? "Velocity (ft/s)" : "Velocity (m/s)"
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Reynolds Number"
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /**********************************************************************
+     * CALCULATION FUNCTION (Pipe Flow Calculator)
+     * Clears previous errors, computes results, updates the chart, and saves
+     * the current calculation to history.
+     **********************************************************************/
+    function calculate() {
+      document.getElementById("errorMessage").textContent = "";
+      
+      const unitSystem = document.getElementById("unitSystem").value;
+      let density = parseFloat(document.getElementById("density").value);
+      let viscosity = parseFloat(document.getElementById("viscosity").value);
+      let velocity = parseFloat(document.getElementById("velocity").value);
+      const selectedSize = document.getElementById("pipeSize").value;
+      const selectedSchedule = document.getElementById("schedule").value;
+      
+      if (!selectedSize || !selectedSchedule) {
+        document.getElementById("errorMessage").textContent = "Please select a pipe size and schedule.";
+        return;
+      }
+      if (isNaN(density) || isNaN(viscosity) || isNaN(velocity)) {
+        document.getElementById("errorMessage").textContent = "Please enter valid numeric values for fluid properties.";
+        return;
+      }
+      
+      // Convert inputs to SI if needed.
+      if (unitSystem === "Imperial") {
+        density = density * lb_ft3_to_kg_m3;
+        viscosity = viscosity * lb_ft_s_to_Pa_s;
+        velocity = velocity * ftps_to_mps;
+      }
+      
+      const pipe = pipeData[selectedSize] && pipeData[selectedSize][selectedSchedule];
+      if (!pipe) {
+        document.getElementById("errorMessage").textContent = "Pipe data not found for the selected size and schedule.";
+        return;
+      }
+      
+      currentOD_SI = pipe.outside;
+      currentID_SI = pipe.inside;
+      
+      const Re = (density * velocity * currentID_SI) / viscosity;
+      
+      let OD_output = currentOD_SI;
+      let ID_output = currentID_SI;
+      if (unitSystem === "Imperial") {
+        OD_output = currentOD_SI * m_to_in;
+        ID_output = currentID_SI * m_to_in;
+        document.getElementById("od").textContent = OD_output.toPrecision(3);
+        document.getElementById("id").textContent = ID_output.toPrecision(3);
+      } else {
+        document.getElementById("od").textContent = OD_output.toFixed(6);
+        document.getElementById("id").textContent = ID_output.toFixed(6);
+      }
+      
+      document.getElementById("reynolds").textContent = Re.toFixed(0);
+      
+      let regime = (Re < 2300) ? "Laminar" :
+                   (Re < 4000) ? "Transitional" : "Turbulent";
+      document.getElementById("flowRegime").textContent = regime;
+      
+      updateChart(velocity, density, viscosity, currentID_SI);
+      
+      const result = {
+        unitSystem: unitSystem,
+        pipeSize: selectedSize,
+        schedule: selectedSchedule,
+        material: document.getElementById("material").value,
+        density: document.getElementById("density").value,
+        viscosity: document.getElementById("viscosity").value,
+        velocity: document.getElementById("velocity").value,
+        od: document.getElementById("od").textContent,
+        id: document.getElementById("id").textContent,
+        reynolds: document.getElementById("reynolds").textContent,
+        flowRegime: document.getElementById("flowRegime").textContent
+      };
+      calcHistory.push(result);
+      updateHistoryDisplay();
+    }
+
+    /**********************************************************************
+     * UPDATE HISTORY DISPLAY
+     * Rebuilds the history table with all saved calculations.
+     **********************************************************************/
+    function updateHistoryDisplay() {
+      const tbody = document.getElementById("historyTable").getElementsByTagName("tbody")[0];
+      tbody.innerHTML = "";
+      calcHistory.forEach((calc, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${index + 1}</td>
+                         <td>${calc.unitSystem}</td>
+                         <td>${calc.pipeSize}</td>
+                         <td>${calc.schedule}</td>
+                         <td>${calc.material}</td>
+                         <td>${calc.density}</td>
+                         <td>${calc.viscosity}</td>
+                         <td>${calc.velocity}</td>
+                         <td>${calc.od}</td>
+                         <td>${calc.id}</td>
+                         <td>${calc.reynolds}</td>
+                         <td>${calc.flowRegime}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    /**********************************************************************
+     * CLEAR HISTORY
+     * Clears the saved calculations and updates the display.
+     **********************************************************************/
+    function clearHistory() {
+      calcHistory = [];
+      updateHistoryDisplay();
+    }
+
+    // Initialize unit system and schedule options on page load.
+    window.onload = function() {
+      updateUnitSystem();
+      updateScheduleOptions();
+    };
+  </script>
+</body>
+</html>
