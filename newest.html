@@ -39,11 +39,11 @@
       display: block;
     }
     button {
-      margin: 1.5em auto;
+      margin: 1.5em 0.5em;
       padding: 0.8em 1.2em;
       font-size: 1em;
       cursor: pointer;
-      display: block;
+      display: inline-block;
     }
     .output, #historyContainer {
       margin-top: 2em;
@@ -139,7 +139,7 @@
     <label for="unitSystem">Unit System:
       <span class="tooltip">?<span class="tooltiptext">Choose SI for metric units (m, kg/m³, Pa·s, m/s) or Imperial for US customary units (in, lb/ft³, lb/(ft·s), ft/s).</span></span>
     </label>
-    <select id="unitSystem" onchange="updateUnitSystem(); updateOutputUnits();">
+    <select id="unitSystem" onchange="updateUnitSystem();">
       <option value="SI">SI (m, kg/m³, Pa·s, m/s)</option>
       <option value="Imperial">Imperial (in, lb/ft³, lb/(ft·s), ft/s)</option>
     </select>
@@ -302,7 +302,9 @@
     </label>
     <input type="number" id="velocity" placeholder="e.g., 1.5" step="any" />
     
+    <!-- Calculation and Clear Buttons -->
     <button onclick="calculate()">Calculate Flow</button>
+    <button onclick="clearForm()">Clear</button>
     
     <div class="output" id="output">
       <p><strong>Pipe Outside Diameter:</strong> <span id="od"></span> <span id="odUnit">m</span></p>
@@ -734,8 +736,6 @@
         document.getElementById("density").placeholder = "e.g., 1000";
         document.getElementById("viscosity").placeholder = "e.g., 0.001";
         document.getElementById("velocity").placeholder = "e.g., 1.5";
-        document.getElementById("idODUnit").textContent = "m";
-        document.getElementById("idIDUnit").textContent = "m";
       } else {
         document.getElementById("densityUnit").textContent = "lb/ft³";
         document.getElementById("viscosityUnit").textContent = "lb/(ft·s)";
@@ -745,11 +745,8 @@
         document.getElementById("density").placeholder = "e.g., 62.43";
         document.getElementById("viscosity").placeholder = "e.g., 0.67";
         document.getElementById("velocity").placeholder = "e.g., 4.92";
-        document.getElementById("idODUnit").textContent = "in";
-        document.getElementById("idIDUnit").textContent = "in";
       }
       updateMaterialProperties();
-      updateOutputUnits();
     }
 
     /**********************************************************************
@@ -809,7 +806,7 @@
             label: "Reynolds Number",
             data: reynoldsValues,
             borderColor: "rgba(75, 192, 192, 1)",
-            fill: false, // no shading under the line
+            fill: false,
             tension: 0.1,
             pointRadius: 2
           }]
@@ -944,6 +941,40 @@
     function clearHistory() {
       calcHistory = [];
       updateHistoryDisplay();
+    }
+    
+    /**********************************************************************
+     * CLEAR FORM FUNCTION
+     * Resets the selected properties, clears input fields and output values,
+     * erases the selections in the nominal pipe size, pipe schedule, and material dropdowns,
+     * and hides the chart.
+     **********************************************************************/
+    function clearForm() {
+      // Clear error message
+      document.getElementById("errorMessage").textContent = "";
+      
+      // Reset unit system to default "SI"
+      document.getElementById("unitSystem").value = "SI";
+      updateUnitSystem();
+      
+      // Erase the selected dropdown values
+      document.getElementById("pipeSize").selectedIndex = -1;
+      document.getElementById("schedule").innerHTML = "";
+      document.getElementById("material").selectedIndex = -1;
+      
+      // Clear numeric input fields
+      document.getElementById("density").value = "";
+      document.getElementById("viscosity").value = "";
+      document.getElementById("velocity").value = "";
+      
+      // Clear output values
+      document.getElementById("od").textContent = "";
+      document.getElementById("id").textContent = "";
+      document.getElementById("reynolds").textContent = "";
+      document.getElementById("flowRegime").textContent = "";
+      
+      // Hide chart container
+      document.getElementById("chartContainer").style.display = "none";
     }
 
     // Initialize unit system and schedule options on page load.
