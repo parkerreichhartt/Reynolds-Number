@@ -154,47 +154,48 @@
       <span class="tooltip">?<span class="tooltiptext">Select the nominal pipe size (in inches).</span></span>
     </label>
     <select id="pipeSize" onchange="updateScheduleOptions()">
-      <option value="1/8">1/8"</option>
-      <option value="1/4">1/4"</option>
-      <option value="3/8">3/8"</option>
-      <option value="1/2">1/2"</option>
-      <option value="3/4">3/4"</option>
-      <option value="1">1"</option>
-      <option value="1 1/4">1 1/4"</option>
-      <option value="1 1/2">1 1/2"</option>
-      <option value="2">2"</option>
-      <option value="2 1/2">2 1/2"</option>
-      <option value="3">3"</option>
-      <option value="3 1/2">3 1/2"</option>
-      <option value="4">4"</option>
-      <option value="4 1/2">4 1/2"</option>
-      <option value="5">5"</option>
-      <option value="6">6"</option>
-      <option value="8">8"</option>
-      <option value="10">10"</option>
-      <option value="12">12"</option>
-      <option value="14">14"</option>
-      <option value="16">16"</option>
-      <option value="18">18"</option>
-      <option value="20">20"</option>
-      <option value="24">24"</option>
-      <option value="30">30"</option>
-      <option value="36">36"</option>
-      <option value="48">48"</option>
+      <option value="" disabled selected>Select Nominal Pipe Size (e.g., 1/2)</option>
+      <option value="1/8">1/8</option>
+      <option value="1/4">1/4</option>
+      <option value="3/8">3/8</option>
+      <option value="1/2">1/2</option>
+      <option value="3/4">3/4</option>
+      <option value="1">1</option>
+      <option value="1 1/4">1 1/4</option>
+      <option value="1 1/2">1 1/2</option>
+      <option value="2">2</option>
+      <option value="2 1/2">2 1/2</option>
+      <option value="3">3</option>
+      <option value="3 1/2">3 1/2</option>
+      <option value="4">4</option>
+      <option value="4 1/2">4 1/2</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="8">8</option>
+      <option value="10">10</option>
+      <option value="12">12</option>
+      <option value="14">14</option>
+      <option value="16">16</option>
+      <option value="18">18</option>
+      <option value="20">20</option>
+      <option value="24">24</option>
+      <option value="30">30</option>
+      <option value="36">36</option>
+      <option value="48">48</option>
     </select>
     
     <label for="schedule">Pipe Schedule:
       <span class="tooltip">?<span class="tooltiptext">Pipe schedule indicates the wall thickness. Only the schedules available for the selected pipe size will appear.</span></span>
     </label>
     <select id="schedule">
-      <!-- Options will be populated automatically -->
+      <!-- The updateScheduleOptions() function will add a default option and valid schedules here -->
     </select>
     
     <label for="material">Material:
       <span class="tooltip">?<span class="tooltiptext">Select the fluid material. When selected, the density and viscosity fields update automatically.</span></span>
     </label>
     <select id="material" onchange="updateMaterialProperties()">
-      <!-- Full list of materials -->
+      <option value="" disabled selected>Select Material (e.g., Water)</option>
       <option value="Methane">Methane</option>
       <option value="Ethane">Ethane</option>
       <option value="Propane">Propane</option>
@@ -699,29 +700,36 @@
     /**********************************************************************
      * UPDATE SCHEDULE OPTIONS
      * Populates the "Pipe Schedule" dropdown based on the selected pipe size,
-     * filtering out any schedule options that contain "XX".
+     * filtering out any schedule options that contain "XX". A default option is added.
      **********************************************************************/
     function updateScheduleOptions() {
       let pipeSize = document.getElementById("pipeSize").value;
-      pipeSize = pipeSize.trim(); // Remove extra spaces
+      pipeSize = pipeSize.trim();
       const scheduleSelect = document.getElementById("schedule");
-      scheduleSelect.innerHTML = ""; // Clear existing options
+      scheduleSelect.innerHTML = "";
       
-      if (pipeData.hasOwnProperty(pipeSize)) {
-        // Filter out any schedule keys that include "XX"
-        const validSchedules = Object.keys(pipeData[pipeSize]).filter(schedule => !schedule.includes("XX"));
-        validSchedules.forEach(function(schedule) {
-          const option = document.createElement("option");
-          option.value = schedule;
-          option.textContent = schedule;
-          scheduleSelect.appendChild(option);
-        });
-      } else {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "No schedule available";
-        scheduleSelect.appendChild(option);
+      // If no pipe size is selected, show default placeholder
+      if (!pipeSize) {
+        scheduleSelect.innerHTML = "<option value='' disabled selected>Select Pipe Schedule (e.g., 40)</option>";
+        return;
       }
+      
+      // Add default option at the top
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "Select Pipe Schedule (e.g., 40)";
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+      scheduleSelect.appendChild(defaultOption);
+      
+      // Filter out schedule keys that include "XX"
+      const validSchedules = Object.keys(pipeData[pipeSize]).filter(schedule => !schedule.includes("XX"));
+      validSchedules.forEach(function(schedule) {
+        const option = document.createElement("option");
+        option.value = schedule;
+        option.textContent = schedule;
+        scheduleSelect.appendChild(option);
+      });
     }
 
     /**********************************************************************
@@ -948,9 +956,8 @@
     
     /**********************************************************************
      * CLEAR FORM FUNCTION
-     * Resets the selected properties, clears input fields and output values,
-     * erases the selections in the nominal pipe size, pipe schedule, and material dropdowns,
-     * and hides the chart.
+     * Resets the selected properties (with default placeholders),
+     * clears input fields and output values, and hides the chart.
      **********************************************************************/
     function clearForm() {
       // Clear error message
@@ -960,10 +967,10 @@
       document.getElementById("unitSystem").value = "SI";
       updateUnitSystem();
       
-      // Erase the selected dropdown values
-      document.getElementById("pipeSize").selectedIndex = -1;
-      document.getElementById("schedule").innerHTML = "";
-      document.getElementById("material").selectedIndex = -1;
+      // Reset the dropdowns to their default placeholder options
+      document.getElementById("pipeSize").selectedIndex = 0;
+      updateScheduleOptions();
+      document.getElementById("material").selectedIndex = 0;
       
       // Clear numeric input fields
       document.getElementById("density").value = "";
